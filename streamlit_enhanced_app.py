@@ -1,94 +1,4 @@
-def single_assessment_interface(api_keys, model_settings):
-    """Interface for single assessment mode"""
-    
-    col1, col2 = st.columns([1, 1])
-    
-    with col1:
-        st.subheader("📝 Interview Input")
-        
-        interview_text = st.text_area(
-            "Interview Text",
-            placeholder="Paste your interview questions and answers here...",
-            height=300,
-            value="""Question: Describe how you usually make important decisions in your professional and personal life. Provide a few examples.
-
-Answer: I also consider the pros and cons of my decision and the possible effects . Also i ask personal opinions from my wife and other relations before I decide on somethin because I believe that two heads are always better than one and If i am not able to spot a problem someone else can and help me correct such mistakes and avoid them
-
-Question: Think of a decision you later regretted because you didn't pay enough attention to the decision-making process. What mistake did you make, and why?
-
-Answer: Honestly I have not regretted any decision made before because anyone I take is a calculated one than I took time to decide on the best option for me and those around me. So I have never regretted any decision I have made. I always stand my ground and back it up with every confidence I have even if it was a wrong one and move on with life."""
-        )
-        
-        if st.button("🚀 Start AOT Assessment", type="primary", use_container_width=True):
-            if not interview_text.strip():
-                st.error("Please enter interview text before running assessment.")
-            elif not any(api_keys.values()):
-                st.error("Please configure at least one API key and test connections.")
-            else:
-                # Test APIs if not already done
-                if 'working_apis' not in st.session_state:
-                    with st.spinner("Testing API connections..."):
-                        working_apis, _ = test_apis(api_keys)
-                        st.session_state.working_apis = working_apis
-                        st.session_state.api_keys = api_keys
-                
-                working_apis = st.session_state.working_apis
-                
-                if not any(working_apis.values()):
-                    st.error("No working APIs found. Please check your API keys.")
-                else:
-                    # Run assessment
-                    with st.container():
-                        results = process_single_row_full_consensus(interview_text, working_apis, api_keys, model_settings)
-                        st.session_state.single_results = results
-    
-    with col2:
-        st.subheader("📊 Assessment Results")
-        
-        if 'single_results' in st.session_state:
-            results = st.session_state.single_results
-            
-            for ai in results["available_ais"]:
-                icon = "🤖" if ai == 'gpt' else "🧠" if ai == 'claude' else "💎"
-                score = results[f'{ai}_initial_score']
-                score_display = f" (Score: {score})" if score else ""
-                
-                with st.expander(f"{icon} {ai.upper()}{score_display}", expanded=True):
-                    st.write(results[f'{ai}_initial_assessment'])
-            
-            # Consensus score
-            if results['consensus_score']:
-                st.success(f"🏆 **Consensus AOT Score: {results['consensus_score']}/7**")
-        
-        else:
-            st.info("👆 Configure your API keys and run an assessment to see results here.")
-
-def batch_processing_interface(api_keys, model_settings):
-    """Interface for batch processing mode"""
-    
-    st.subheader("📊 Batch Processing")
-    st.info("💡 Upload a CSV/Excel file with interview responses and get AOT scores for all rows!")
-    
-    col1, col2 = st.columns([1, 1])
-    
-    with col1:
-        # File upload
-        uploaded_file = st.file_uploader(
-            "📁 Upload your dataset",
-            type=['csv', 'xlsx', 'xls'],
-            help="Upload a CSV or Excel file with interview responses"
-        )
-        
-        if uploaded_file is not None:
-            try:
-                # Read the file
-                if uploaded_file.name.endswith('.csv'):
-                    df = pd.read_csv(uploaded_file)
-                else:
-                    df = pd.read_excel(uploaded_file)
-                
-                st.success(f"# streamlit_app.py - Enhanced Multi-AI AOT Assessment with Batch Processing
-# This replaces your existing streamlit_app.py
+# streamlit_app.py - Enhanced Multi-AI AOT Assessment with Batch Processing
 
 import streamlit as st
 import pandas as pd
@@ -102,10 +12,7 @@ from typing import Dict, List
 from io import StringIO
 import json
 
-# ============================================================================
-# PAGE CONFIG
-# ============================================================================
-
+# Page config
 st.set_page_config(
     page_title="Multi-AI AOT Assessment",
     page_icon="🧠",
@@ -113,10 +20,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# ============================================================================
-# CUSTOM CSS
-# ============================================================================
-
+# Custom CSS
 st.markdown("""
 <style>
     .main-header {
@@ -127,14 +31,12 @@ st.markdown("""
         margin-bottom: 2rem;
         color: white;
     }
-    
     .batch-stats {
         background: #e3f2fd;
         padding: 1rem;
         border-radius: 8px;
         margin: 1rem 0;
     }
-    
     .mode-selector {
         background: #f5f5f5;
         padding: 1rem;
@@ -144,10 +46,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# ============================================================================
-# AOT FRAMEWORK
-# ============================================================================
-
+# AOT Framework
 AOT_SCORING_GUIDE = """
 Actively Open-Minded Thinking (AOT) Assessment Scale (1-7):
 
@@ -178,13 +77,9 @@ Actively Open-Minded Thinking (AOT) Assessment Scale (1-7):
 Provide your score with detailed reasoning.
 """
 
-# ============================================================================
-# API FUNCTIONS
-# ============================================================================
-
+# API Functions
 @st.cache_data(ttl=300)
 def test_apis(api_keys):
-    """Test all APIs and return which ones work"""
     working_apis = {}
     status_messages = {}
     
@@ -208,21 +103,14 @@ def test_apis(api_keys):
     
     # Test Claude
     if api_keys.get('anthropic'):
-        claude_models = [
-            "claude-3-5-sonnet-20241022",
-            "claude-3-5-haiku-20241022",
-            "claude-3-haiku-20240307"
-        ]
-        
+        claude_models = ["claude-3-5-sonnet-20241022", "claude-3-5-haiku-20241022", "claude-3-haiku-20240307"]
         working_apis['claude'] = False
         try:
             anthropic_client = anthropic.Anthropic(api_key=api_keys['anthropic'])
-            
             for model in claude_models:
                 try:
                     response = anthropic_client.messages.create(
-                        model=model,
-                        max_tokens=5,
+                        model=model, max_tokens=5,
                         messages=[{"role": "user", "content": "Test"}]
                     )
                     working_apis['claude'] = model
@@ -230,10 +118,8 @@ def test_apis(api_keys):
                     break
                 except:
                     continue
-            
             if not working_apis['claude']:
                 status_messages['claude'] = "❌ No accessible models"
-                
         except Exception as e:
             working_apis['claude'] = False
             status_messages['claude'] = f"❌ {str(e)[:50]}..."
@@ -244,27 +130,21 @@ def test_apis(api_keys):
     # Test Gemini
     if api_keys.get('google'):
         gemini_models = ['gemini-2.0-flash-exp', 'gemini-1.5-pro']
-        
         working_apis['gemini'] = False
         try:
             genai.configure(api_key=api_keys['google'])
-            
             for model_name in gemini_models:
                 try:
                     model = genai.GenerativeModel(model_name)
                     response = model.generate_content("Test")
-                    
                     if response.text:
                         working_apis['gemini'] = model_name
                         status_messages['gemini'] = f"✅ Working with {model_name}"
                         break
-                        
                 except:
                     continue
-            
             if not working_apis['gemini']:
                 status_messages['gemini'] = "❌ No accessible models"
-                
         except Exception as e:
             working_apis['gemini'] = False
             status_messages['gemini'] = f"❌ {str(e)[:50]}..."
@@ -275,26 +155,21 @@ def test_apis(api_keys):
     return working_apis, status_messages
 
 def call_gpt_api(prompt: str, api_key: str, model: str = "gpt-3.5-turbo") -> str:
-    """Call GPT API with selectable model"""
     try:
         client = openai.OpenAI(api_key=api_key)
         response = client.chat.completions.create(
-            model=model,
-            messages=[{"role": "user", "content": prompt}],
-            temperature=0.7,
-            max_tokens=1000
+            model=model, messages=[{"role": "user", "content": prompt}],
+            temperature=0.7, max_tokens=1000
         )
         return response.choices[0].message.content
     except Exception as e:
         return f"GPT API Error: {str(e)}"
 
 def call_claude_api(prompt: str, api_key: str, model_name: str) -> str:
-    """Call Claude API"""
     try:
         anthropic_client = anthropic.Anthropic(api_key=api_key)
         response = anthropic_client.messages.create(
-            model=model_name,
-            max_tokens=1000,
+            model=model_name, max_tokens=1000,
             messages=[{"role": "user", "content": prompt}]
         )
         return response.content[0].text
@@ -302,7 +177,6 @@ def call_claude_api(prompt: str, api_key: str, model_name: str) -> str:
         return f"Claude API Error: {str(e)}"
 
 def call_gemini_api(prompt: str, api_key: str, model_name: str) -> str:
-    """Call Gemini API"""
     try:
         model = genai.GenerativeModel(model_name)
         response = model.generate_content(prompt)
@@ -310,16 +184,10 @@ def call_gemini_api(prompt: str, api_key: str, model_name: str) -> str:
     except Exception as e:
         return f"Gemini API Error: {str(e)}"
 
-# ============================================================================
-# SCORE EXTRACTION
-# ============================================================================
-
+# Score extraction
 def extract_aot_score(text: str) -> float:
-    """Extract AOT score from AI response text"""
     if not text or "Error" in text:
         return None
-    
-    # Look for patterns like "AOT Score: 4", "score of 3.5", "4/7", etc.
     patterns = [
         r'AOT Score:\s*(\d+(?:\.\d+)?)',
         r'score of (\d+(?:\.\d+)?)',
@@ -327,23 +195,16 @@ def extract_aot_score(text: str) -> float:
         r'(\d+(?:\.\d+)?)/7',
         r'(\d+(?:\.\d+)?)\s*out of 7'
     ]
-    
     for pattern in patterns:
         match = re.search(pattern, text, re.IGNORECASE)
         if match:
             score = float(match.group(1))
             if 1 <= score <= 7:
                 return score
-    
     return None
 
-# ============================================================================
-# ASSESSMENT FUNCTIONS
-# ============================================================================
-
+# Assessment functions
 def get_single_assessment(ai_name: str, interview_text: str, working_apis: dict, api_keys: dict, model_settings: dict = None) -> str:
-    """Get assessment from a single AI"""
-    
     prompt = f"""You are an expert psychologist specializing in Actively Open-Minded Thinking (AOT) assessment.
 
 {AOT_SCORING_GUIDE}
@@ -372,8 +233,6 @@ Be thorough and specific in your analysis. Make sure to clearly state your numer
         return f"{ai_name.upper()} not available"
 
 def get_refined_assessment(ai_name: str, interview_text: str, other_assessments: dict, working_apis: dict, api_keys: dict, model_settings: dict = None) -> str:
-    """Get refined assessment after seeing other AIs' work"""
-    
     all_assessments = "\n".join([
         f"{ai.upper()} ASSESSMENT:\n{assessment}\n"
         for ai, assessment in other_assessments.items() if ai != ai_name
@@ -410,8 +269,6 @@ Make sure to clearly state your refined numerical AOT score."""
         return f"{ai_name.upper()} not available"
 
 def get_consensus_assessment(interview_text: str, refined_assessments: dict, working_apis: dict, api_keys: dict, model_settings: dict = None) -> str:
-    """Get final consensus assessment"""
-    
     all_refined = "\n".join([
         f"{ai.upper()} REFINED ASSESSMENT:\n{assessment}\n"
         for ai, assessment in refined_assessments.items()
@@ -434,7 +291,6 @@ Instructions:
 
 This should be the definitive AOT assessment. Make sure to clearly state your final consensus numerical AOT score."""
     
-    # Use the first available AI for consensus
     available_ais = [ai for ai in ['gpt', 'claude', 'gemini'] if working_apis.get(ai)]
     if not available_ais:
         return "No AIs available for consensus"
@@ -450,33 +306,14 @@ This should be the definitive AOT assessment. Make sure to clearly state your fi
         return call_gemini_api(prompt, api_keys['google'], working_apis['gemini'])
 
 def process_single_row_full_consensus(interview_text: str, working_apis: dict, api_keys: dict, model_settings: dict = None):
-    """Process a single interview with full 3-phase consensus process"""
-    
     results = {
-        # Phase 1: Initial assessments
-        "gpt_initial_assessment": "",
-        "claude_initial_assessment": "",
-        "gemini_initial_assessment": "",
-        "gpt_initial_score": None,
-        "claude_initial_score": None,
-        "gemini_initial_score": None,
-        
-        # Phase 2: Refined assessments
-        "gpt_refined_assessment": "",
-        "claude_refined_assessment": "",
-        "gemini_refined_assessment": "",
-        "gpt_refined_score": None,
-        "claude_refined_score": None,
-        "gemini_refined_score": None,
-        
-        # Phase 3: Consensus
-        "consensus_assessment": "",
-        "consensus_score": None,
-        
-        "available_ais": []
+        "gpt_initial_assessment": "", "claude_initial_assessment": "", "gemini_initial_assessment": "",
+        "gpt_initial_score": None, "claude_initial_score": None, "gemini_initial_score": None,
+        "gpt_refined_assessment": "", "claude_refined_assessment": "", "gemini_refined_assessment": "",
+        "gpt_refined_score": None, "claude_refined_score": None, "gemini_refined_score": None,
+        "consensus_assessment": "", "consensus_score": None, "available_ais": []
     }
     
-    # Determine available AIs
     for ai_name in ['gpt', 'claude', 'gemini']:
         if working_apis.get(ai_name):
             results["available_ais"].append(ai_name)
@@ -492,7 +329,7 @@ def process_single_row_full_consensus(interview_text: str, working_apis: dict, a
         results[f"{ai_name}_initial_score"] = extract_aot_score(assessment)
         initial_assessments[ai_name] = assessment
     
-    # Phase 2: Refined assessments (only if multiple AIs available)
+    # Phase 2: Refined assessments
     if len(results["available_ais"]) > 1:
         refined_assessments = {}
         for ai_name in results["available_ais"]:
@@ -506,17 +343,14 @@ def process_single_row_full_consensus(interview_text: str, working_apis: dict, a
         results["consensus_assessment"] = consensus
         results["consensus_score"] = extract_aot_score(consensus)
     else:
-        # Single AI - use initial assessment as final
         single_ai = results["available_ais"][0]
-        results["consensus_assessment"] = f"Single AI assessment (no consensus needed): {initial_assessments[single_ai]}"
+        results["consensus_assessment"] = f"Single AI assessment: {initial_assessments[single_ai]}"
         results["consensus_score"] = results[f"{single_ai}_initial_score"]
     
     return results
 
 def process_batch(df: pd.DataFrame, question_answer_columns: list, working_apis: dict, api_keys: dict, model_settings: dict):
-    """Process a batch of interviews with full consensus"""
-    
-    # Add new columns for all results
+    # Add columns
     for ai in ['gpt', 'claude', 'gemini']:
         if working_apis.get(ai):
             df[f'{ai}_initial_assessment'] = ''
@@ -527,21 +361,17 @@ def process_batch(df: pd.DataFrame, question_answer_columns: list, working_apis:
     df['consensus_assessment'] = ''
     df['consensus_score'] = None
     df['processing_status'] = 'pending'
-    df['gpt_model_used'] = model_settings.get('gpt_model', 'gpt-3.5-turbo')  # Track which model was used
+    df['gpt_model_used'] = model_settings.get('gpt_model', 'gpt-3.5-turbo')
     
-    # Progress tracking
     progress_bar = st.progress(0)
     status_container = st.empty()
     
-    # Process each row
     for index, row in df.iterrows():
         try:
-            # Combine question-answer pairs into interview text
             interview_parts = []
             for i, (q_col, a_col) in enumerate(question_answer_columns, 1):
                 question = str(row[q_col]) if pd.notna(row[q_col]) else f"Question {i}:"
                 answer = str(row[a_col]) if pd.notna(row[a_col]) else ""
-                
                 if answer.strip():
                     interview_parts.append(f"Question {i}: {question}\n\nAnswer: {answer}")
             
@@ -550,13 +380,11 @@ def process_batch(df: pd.DataFrame, question_answer_columns: list, working_apis:
                 continue
             
             interview_text = "\n\n".join(interview_parts)
+            gpt_model = model_settings.get('gpt_model', 'gpt-3.5-turbo')
+            status_container.text(f"Processing row {index + 1}/{len(df)}: Full consensus with {gpt_model}...")
             
-            status_container.text(f"Processing row {index + 1}/{len(df)}: Full consensus analysis with {model_settings.get('gpt_model', 'gpt-3.5-turbo')}...")
-            
-            # Process this row with full consensus
             results = process_single_row_full_consensus(interview_text, working_apis, api_keys, model_settings)
             
-            # Store all results
             for ai in results["available_ais"]:
                 df.at[index, f'{ai}_initial_assessment'] = results[f'{ai}_initial_assessment']
                 df.at[index, f'{ai}_initial_score'] = results[f'{ai}_initial_score']
@@ -569,20 +397,14 @@ def process_batch(df: pd.DataFrame, question_answer_columns: list, working_apis:
             
         except Exception as e:
             df.at[index, 'processing_status'] = f'error: {str(e)[:50]}'
-            st.error(f"Error processing row {index + 1}: {str(e)}")
         
-        # Update progress
         progress_bar.progress((index + 1) / len(df))
     
     status_container.text("✅ Full consensus batch processing complete!")
     return df
 
-# ============================================================================
-# STREAMLIT APP
-# ============================================================================
-
+# Main app
 def main():
-    # Header
     st.markdown("""
     <div class="main-header">
         <h1>🧠 Multi-AI AOT Assessment</h1>
@@ -591,16 +413,11 @@ def main():
     </div>
     """, unsafe_allow_html=True)
     
-    # Mode Selection
     st.markdown('<div class="mode-selector">', unsafe_allow_html=True)
-    mode = st.radio(
-        "🔧 **Select Assessment Mode:**",
-        ["📝 Single Assessment", "📊 Batch Processing"],
-        horizontal=True
-    )
+    mode = st.radio("🔧 **Select Assessment Mode:**", ["📝 Single Assessment", "📊 Batch Processing"], horizontal=True)
     st.markdown('</div>', unsafe_allow_html=True)
     
-    # Sidebar for configuration
+    # Sidebar
     st.sidebar.title("🔧 Configuration")
     
     with st.sidebar.expander("📝 API Keys", expanded=True):
@@ -612,266 +429,169 @@ def main():
         gpt_model = st.selectbox(
             "GPT Model:",
             options=["gpt-4", "gpt-3.5-turbo"],
-            index=1,  # Default to 3.5-turbo for cost savings
+            index=1,
             help="GPT-4: Higher quality, ~20x more expensive. GPT-3.5-Turbo: Good quality, much cheaper"
         )
         
-        # Show cost estimate
         if gpt_model == "gpt-4":
             st.info("💰 GPT-4: Premium quality, higher cost (~$0.30 per assessment)")
         else:
             st.success("💰 GPT-3.5-Turbo: Good quality, low cost (~$0.01 per assessment)")
     
-    api_keys = {
-        'openai': openai_key,
-        'anthropic': anthropic_key,
-        'google': google_key
-    }
+    api_keys = {'openai': openai_key, 'anthropic': anthropic_key, 'google': google_key}
+    model_settings = {'gpt_model': gpt_model}
     
-    model_settings = {
-        'gpt_model': gpt_model
-    }
-    
-    # Test APIs button
+    # Test APIs
     if st.sidebar.button("🧪 Test API Connections", type="secondary"):
         if any(api_keys.values()):
             with st.spinner("Testing API connections..."):
                 working_apis, status_messages = test_apis(api_keys)
-                
                 st.sidebar.markdown("**API Status:**")
                 for ai, status in status_messages.items():
                     st.sidebar.markdown(f"**{ai.upper()}:** {status}")
-                
-                # Store in session state
                 st.session_state.working_apis = working_apis
                 st.session_state.api_keys = api_keys
         else:
             st.sidebar.error("Please provide at least one API key")
     
-    # Main content based on mode
+    # Main interface
     if mode == "📝 Single Assessment":
         single_assessment_interface(api_keys, model_settings)
     else:
         batch_processing_interface(api_keys, model_settings)
 
-def single_assessment_interface(api_keys):
-    """Interface for single assessment mode"""
-    
+def single_assessment_interface(api_keys, model_settings):
     col1, col2 = st.columns([1, 1])
     
     with col1:
         st.subheader("📝 Interview Input")
-        
-        interview_text = st.text_area(
-            "Interview Text",
-            placeholder="Paste your interview questions and answers here...",
-            height=300,
-            value="""Question: Describe how you usually make important decisions in your professional and personal life. Provide a few examples.
-
-Answer: I also consider the pros and cons of my decision and the possible effects . Also i ask personal opinions from my wife and other relations before I decide on somethin because I believe that two heads are always better than one and If i am not able to spot a problem someone else can and help me correct such mistakes and avoid them
-
-Question: Think of a decision you later regretted because you didn't pay enough attention to the decision-making process. What mistake did you make, and why?
-
-Answer: Honestly I have not regretted any decision made before because anyone I take is a calculated one than I took time to decide on the best option for me and those around me. So I have never regretted any decision I have made. I always stand my ground and back it up with every confidence I have even if it was a wrong one and move on with life."""
-        )
+        interview_text = st.text_area("Interview Text", height=300, placeholder="Paste your interview...")
         
         if st.button("🚀 Start AOT Assessment", type="primary", use_container_width=True):
             if not interview_text.strip():
-                st.error("Please enter interview text before running assessment.")
+                st.error("Please enter interview text.")
             elif not any(api_keys.values()):
-                st.error("Please configure at least one API key and test connections.")
+                st.error("Please configure API keys.")
             else:
-                # Test APIs if not already done
                 if 'working_apis' not in st.session_state:
-                    with st.spinner("Testing API connections..."):
+                    with st.spinner("Testing APIs..."):
                         working_apis, _ = test_apis(api_keys)
                         st.session_state.working_apis = working_apis
-                        st.session_state.api_keys = api_keys
                 
                 working_apis = st.session_state.working_apis
-                
                 if not any(working_apis.values()):
-                    st.error("No working APIs found. Please check your API keys.")
+                    st.error("No working APIs found.")
                 else:
-                    # Run assessment
-                    with st.container():
-                        results = process_single_row(interview_text, working_apis, api_keys)
-                        st.session_state.single_results = results
+                    results = process_single_row_full_consensus(interview_text, working_apis, api_keys, model_settings)
+                    st.session_state.single_results = results
     
     with col2:
         st.subheader("📊 Assessment Results")
-        
         if 'single_results' in st.session_state:
             results = st.session_state.single_results
-            
             for ai in results["available_ais"]:
                 icon = "🤖" if ai == 'gpt' else "🧠" if ai == 'claude' else "💎"
-                score = results[f'{ai}_score']
+                score = results[f'{ai}_initial_score']
                 score_display = f" (Score: {score})" if score else ""
-                
                 with st.expander(f"{icon} {ai.upper()}{score_display}", expanded=True):
-                    st.write(results[f'{ai}_assessment'])
-            
-            # Consensus score
+                    st.write(results[f'{ai}_initial_assessment'])
             if results['consensus_score']:
                 st.success(f"🏆 **Consensus AOT Score: {results['consensus_score']}/7**")
-        
         else:
-            st.info("👆 Configure your API keys and run an assessment to see results here.")
+            st.info("👆 Configure API keys and run assessment.")
 
-def batch_processing_interface(api_keys):
-    """Interface for batch processing mode"""
-    
+def batch_processing_interface(api_keys, model_settings):
     st.subheader("📊 Batch Processing")
-    st.info("💡 Upload a CSV/Excel file with interview responses and get AOT scores for all rows!")
+    st.info("💡 Upload CSV/Excel with interview responses!")
     
     col1, col2 = st.columns([1, 1])
     
     with col1:
-        # File upload
-        uploaded_file = st.file_uploader(
-            "📁 Upload your dataset",
-            type=['csv', 'xlsx', 'xls'],
-            help="Upload a CSV or Excel file with interview responses"
-        )
+        uploaded_file = st.file_uploader("📁 Upload dataset", type=['csv', 'xlsx', 'xls'])
         
         if uploaded_file is not None:
             try:
-                # Read the file
                 if uploaded_file.name.endswith('.csv'):
                     df = pd.read_csv(uploaded_file)
                 else:
                     df = pd.read_excel(uploaded_file)
                 
-                st.success(f"✅ File uploaded successfully! Found {len(df)} rows.")
+                st.success(f"✅ File uploaded! Found {len(df)} rows.")
                 
-                # Show preview
                 with st.expander("👀 Data Preview", expanded=True):
                     st.dataframe(df.head())
                 
-                # Question-Answer column selection
                 st.markdown("### 📝 Select Question-Answer Pairs")
-                st.info("💡 Choose columns that contain your interview questions and corresponding answers")
-                
                 question_answer_pairs = []
-                num_pairs = st.number_input("Number of Question-Answer pairs:", min_value=1, max_value=5, value=2)
+                num_pairs = st.number_input("Number of Q&A pairs:", min_value=1, max_value=5, value=2)
                 
                 for i in range(num_pairs):
                     col1_inner, col2_inner = st.columns(2)
                     with col1_inner:
-                        q_col = st.selectbox(
-                            f"Question {i+1} column:",
-                            options=[''] + df.columns.tolist(),
-                            key=f"q_{i}"
-                        )
+                        q_col = st.selectbox(f"Question {i+1}:", [''] + df.columns.tolist(), key=f"q_{i}")
                     with col2_inner:
-                        a_col = st.selectbox(
-                            f"Answer {i+1} column:",
-                            options=[''] + df.columns.tolist(),
-                            key=f"a_{i}"
-                        )
-                    
+                        a_col = st.selectbox(f"Answer {i+1}:", [''] + df.columns.tolist(), key=f"a_{i}")
                     if q_col and a_col:
                         question_answer_pairs.append((q_col, a_col))
                 
-                # Show sample combined text
                 if question_answer_pairs and len(df) > 0:
-                    st.markdown("**Sample combined interview text:**")
+                    st.markdown("**Sample combined text:**")
                     sample_parts = []
                     for i, (q_col, a_col) in enumerate(question_answer_pairs, 1):
-                        question = str(df[q_col].iloc[0]) if pd.notna(df[q_col].iloc[0]) else f"Question {i}:"
-                        answer = str(df[a_col].iloc[0]) if pd.notna(df[a_col].iloc[0]) else ""
-                        if answer.strip():
-                            sample_parts.append(f"Q{i}: {question}\nA{i}: {answer}")
-                    
+                        q = str(df[q_col].iloc[0]) if pd.notna(df[q_col].iloc[0]) else f"Q{i}:"
+                        a = str(df[a_col].iloc[0]) if pd.notna(df[a_col].iloc[0]) else ""
+                        if a.strip():
+                            sample_parts.append(f"Q{i}: {q}\nA{i}: {a}")
                     sample_text = "\n\n".join(sample_parts)[:300] + "..."
                     st.text_area("Sample:", sample_text, height=150, disabled=True)
                 
-                # Processing options
-                max_rows = st.number_input(
-                    "Maximum rows to process (0 = all rows):",
-                    min_value=0,
-                    max_value=len(df),
-                    value=0
-                )
-                
+                max_rows = st.number_input("Max rows (0=all):", min_value=0, max_value=len(df), value=0)
                 if max_rows > 0:
                     df = df.head(max_rows)
                 
-                # Show cost estimate with selected model
+                # Cost estimate
                 gpt_model = model_settings.get('gpt_model', 'gpt-3.5-turbo')
-                model_cost_multiplier = 0.45 if gpt_model == 'gpt-4' else 0.05  # Much cheaper with 3.5-turbo
+                cost_per_row = 0.45 if gpt_model == 'gpt-4' else 0.05
+                estimated_cost = len(df) * 3 * cost_per_row  # 3 AIs estimate
                 
-                available_ais = [ai for ai in ['gpt', 'claude', 'gemini'] if 'working_apis' in st.session_state and st.session_state.working_apis.get(ai)]
-                if not available_ais:
-                    available_ais = ['gpt', 'claude', 'gemini']  # Default estimate
+                st.warning(f"⚠️ **Full Consensus with {gpt_model}** - Estimated: ${estimated_cost:.2f}")
                 
-                estimated_cost = len(df) * len(available_ais) * model_cost_multiplier
-                
-                st.warning(f"⚠️ **Full Consensus Mode with {gpt_model}:** This will run the complete 3-phase process (Initial → Refined → Consensus) for each row.")
-                st.info(f"💰 **Estimated cost:** ~${estimated_cost:.2f} for {len(df)} rows with {len(available_ais)} AI(s)")
-                
-                # Process button
-                if st.button("🚀 Process Batch with Full Consensus", type="primary", use_container_width=True):
+                if st.button("🚀 Process Batch", type="primary", use_container_width=True):
                     if not question_answer_pairs:
-                        st.error("Please select at least one question-answer pair!")
+                        st.error("Select Q&A pairs!")
                     elif not any(api_keys.values()):
-                        st.error("Please configure at least one API key first!")
+                        st.error("Add API keys!")
                     else:
-                        # Test APIs if needed
                         if 'working_apis' not in st.session_state:
-                            with st.spinner("Testing API connections..."):
+                            with st.spinner("Testing APIs..."):
                                 working_apis, _ = test_apis(api_keys)
                                 st.session_state.working_apis = working_apis
-                                st.session_state.api_keys = api_keys
                         
                         working_apis = st.session_state.working_apis
-                        
                         if not any(working_apis.values()):
-                            st.error("No working APIs found. Please check your API keys.")
+                            st.error("No working APIs.")
                         else:
-                            # Start processing immediately
-                            st.markdown(f"### 🔄 Processing Batch with {gpt_model}...")
-                            
-                            # Update cost estimate with actual working AIs
-                            actual_ais = [ai for ai in ['gpt', 'claude', 'gemini'] if working_apis.get(ai)]
-                            actual_cost = len(df) * len(actual_ais) * model_cost_multiplier
-                            
-                            st.warning(f"⚠️ **Processing:** {len(df)} rows with {len(actual_ais)} AI(s) using {gpt_model} - Estimated cost: ~${actual_cost:.2f}")
-                            
-                            # Process immediately
+                            st.markdown(f"### 🔄 Processing with {gpt_model}...")
                             start_time = time.time()
-                            
-                            # Process batch with full consensus
                             processed_df = process_batch(df, question_answer_pairs, working_apis, api_keys, model_settings)
-                            
-                            # Store results
                             st.session_state.processed_df = processed_df
                             st.session_state.processing_complete = True
-                            
                             end_time = time.time()
-                            processing_time = end_time - start_time
+                            st.success(f"✅ Complete! Took {(end_time-start_time)/60:.1f} minutes")
+                            st.rerun()
                             
-                            st.success(f"✅ Full consensus batch processing complete! Took {processing_time/60:.1f} minutes")
-                            st.rerun()  # Refresh to show results
-                                    
             except Exception as e:
                 st.error(f"Error reading file: {str(e)}")
-        
         else:
-            st.info("👆 Upload a CSV or Excel file to get started")
+            st.info("👆 Upload CSV/Excel to start")
     
     with col2:
         st.subheader("📈 Results & Download")
         
         if st.session_state.get('processing_complete') and 'processed_df' in st.session_state:
             df_results = st.session_state.processed_df
-            
-            # Show statistics
             completed = len(df_results[df_results['processing_status'] == 'completed'])
             total = len(df_results)
-            
-            # Show which GPT model was used
             gpt_model_used = df_results['gpt_model_used'].iloc[0] if 'gpt_model_used' in df_results.columns else "Unknown"
             
             st.markdown(f"""
@@ -880,58 +600,42 @@ def batch_processing_interface(api_keys):
                 <ul>
                     <li>✅ <strong>Completed:</strong> {completed}/{total}</li>
                     <li>📝 <strong>Success Rate:</strong> {completed/total*100:.1f}%</li>
-                    <li>🤖 <strong>GPT Model Used:</strong> {gpt_model_used}</li>
+                    <li>🤖 <strong>GPT Model:</strong> {gpt_model_used}</li>
                 </ul>
             </div>
             """, unsafe_allow_html=True)
             
-            # Show sample results
             with st.expander("👀 Sample Results", expanded=True):
-                # Show just the score columns for preview
                 score_cols = [col for col in df_results.columns if col.endswith('_score')]
                 preview_cols = ['processing_status'] + score_cols
                 available_cols = [col for col in preview_cols if col in df_results.columns]
                 st.dataframe(df_results[available_cols].head())
             
-            # Download button
             csv_data = df_results.to_csv(index=False)
             st.download_button(
-                label="💾 Download Complete Results CSV",
+                label="💾 Download Complete Results",
                 data=csv_data,
-                file_name=f"aot_full_consensus_results_{time.strftime('%Y%m%d_%H%M%S')}.csv",
+                file_name=f"aot_full_consensus_{time.strftime('%Y%m%d_%H%M%S')}.csv",
                 mime="text/csv",
                 use_container_width=True
             )
             
-            # Show what's included in the download
             st.markdown("**📋 Download includes:**")
-            result_columns = [col for col in df_results.columns if 'assessment' in col or 'score' in col or col == 'processing_status']
-            st.write(f"• All original data plus {len(result_columns)} new assessment columns")
-            st.write(f"• Initial, Refined, and Consensus assessments from each AI")
-            st.write(f"• Detailed reasoning and numerical scores")
+            result_cols = [col for col in df_results.columns if 'assessment' in col or 'score' in col]
+            st.write(f"• Original data + {len(result_cols)} assessment columns")
+            st.write("• Initial, Refined, and Consensus from each AI")
             
-            # Clear results
             if st.button("🗑️ Clear Results", type="secondary"):
-                if 'processed_df' in st.session_state:
-                    del st.session_state.processed_df
-                if 'processing_complete' in st.session_state:
-                    del st.session_state.processing_complete
+                for key in ['processed_df', 'processing_complete']:
+                    if key in st.session_state:
+                        del st.session_state[key]
                 st.rerun()
-        
         else:
-            st.info("📊 Process a batch file to see results here.")
-
-# ============================================================================
-# RUN APP
-# ============================================================================
+            st.info("📊 Process a batch to see results.")
 
 if __name__ == "__main__":
-    # Initialize session state
     if 'processing_complete' not in st.session_state:
         st.session_state.processing_complete = False
-    
     main()
-    
-    # Footer
     st.markdown("---")
     st.markdown("🧠 **Multi-AI AOT Assessment System** • Built with Streamlit")
